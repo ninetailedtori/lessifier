@@ -1,0 +1,29 @@
+{
+    "name": "scraper-automation",
+    "version": "1.0.0",
+    "description": "Automates scraping and filtering of CSS from websites for userstyles.",
+    "main": "index.js",
+    "scripts": {
+        "build": "pnpm run build:filter && pnpm run build:collate",
+        "build:filter": "tsx src/filter-colours.ts in.css",
+        "build:collate": "tsx src/collate-selectors.ts in.css",
+        "format": "prettier --write .",
+        "format:check": "prettier --check .",
+        "format:staged": "prettier --write --staged"
+    },
+    "keywords": [],
+    "author": "ninetailedtori",
+    "license": "GPL-3.0-or-later",
+    "packageManager": "pnpm@10.33.0",
+    "engines": {
+        "pnpm": ">9.0.0"
+    },
+    "dependencies": {
+        "node": "^25.9.0",
+        "postcss": "^8.5.9",
+        "tsx": "^4.21.0"
+    },
+    "devDependencies": {
+        "@types/node": "^25.6.0"
+    }
+}
