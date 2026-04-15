@@ -1,6 +1,6 @@
 # lessifier
 
-Converts your flat pure CSS into nested LESS syntax. Say goodbye to the days 
+Converts your flat pure CSS into nested LESS syntax. Say goodbye to the days
 of manually refactoring messy scraped CSS!
 
 ## what does it do?
