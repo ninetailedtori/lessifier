@@ -1,29 +1,49 @@
 {
-    "name": "scraper-automation",
+    "name": "lessifier",
     "version": "1.0.0",
-    "description": "Automates scraping and filtering of CSS from websites for userstyles.",
-    "main": "index.js",
+    "description": "Converts your flat pure CSS into nested LESS syntax. Say goodbye to the days of manually refactoring messy scraped CSS!",
+    "keywords": [],
+    "author": "ninetailedtori",
+    "license": "GPL-3.0-or-later",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
+    "files": ["dist"],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ninetailedtori/lessifier"
+    },
+    "homepage": "https://github.com/ninetailedtori/lessifier",
+    "bugs": {
+        "url": "https://github.com/ninetailedtori/lessifier/issues"
+    },
+    "type": "module",
     "scripts": {
-        "build": "pnpm run build:filter && pnpm run build:collate",
-        "build:filter": "tsx src/filter-colours.ts in.css",
-        "build:collate": "tsx src/collate-selectors.ts in.css",
+        "prepare": "pnpm run format && pnpm run build",
+        "build": "tsup",
+        "build:watch": "tsup --watch",
+        "demo": "node demo/index.js",
+        "demo:debug": "LOG_LEVEL=0 node demo/index.js",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
         "format:staged": "prettier --write --staged"
     },
-    "keywords": [],
-    "author": "ninetailedtori",
-    "license": "GPL-3.0-or-later",
     "packageManager": "pnpm@10.33.0",
     "engines": {
         "pnpm": ">9.0.0"
     },
     "dependencies": {
-        "node": "^25.9.0",
         "postcss": "^8.5.9",
         "tsx": "^4.21.0"
     },
     "devDependencies": {
-        "@types/node": "^25.6.0"
+        "@types/node": "^25.6.0",
+        "tsup": "^8.5.1",
+        "typescript": "^6.0.2"
     }
 }
