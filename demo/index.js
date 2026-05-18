@@ -12,21 +12,21 @@ import { collateSelectors, filterColours, lessify } from '../dist/index.js';
 import fs from 'fs';
 
 async function main() {
-    const input = fs.readFileSync('demo/css/in.1.css', 'utf-8');
+    const input = await fs.readFileSync( 'demo/css/in.1.css', 'utf-8' );
 
-    console.log('filtering colours...in.1.css => filtered.2.css');
-    const filtered = filterColours(input);
-    fs.writeFileSync('demo/css/filtered.2.css', filtered);
+    console.log( 'filtering colours...in.1.css => filtered.2.css' );
+    const filtered = await filterColours( input );
+    await fs.writeFileSync( 'demo/css/filtered.2.css', filtered );
 
-    console.log('collating selectors...filtered.2.css => collated.3.css');
-    const collated = collateSelectors(filtered);
-    fs.writeFileSync('demo/css/collated.3.css', collated);
+    console.log( 'collating selectors...filtered.2.css => collated.3.css' );
+    const collated = await collateSelectors( filtered );
+    await fs.writeFileSync( 'demo/css/collated.3.css', collated );
 
-    console.log('lessifying...collated.3.css => lessified.4.less');
-    const lessified = lessify(collated);
-    fs.writeFileSync('demo/css/lessified.4.less', lessified);
+    console.log( 'lessifying...collated.3.css => lessified.4.less' );
+    const lessified = await lessify( collated );
+    await fs.writeFileSync( 'demo/css/lessified.4.less', lessified );
 
-    console.log('lessification complete!');
+    console.log( 'lessification complete!' );
 }
 
-main().catch(console.error);
+main().catch( console.error );

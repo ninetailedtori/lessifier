@@ -40,12 +40,12 @@
         "pnpm": ">9.0.0"
     },
     "dependencies": {
-        "postcss": "^8.5.10",
-        "tsx": "^4.21.0"
+        "postcss": "^8.5.10"
     },
     "devDependencies": {
         "@types/node": "^25.6.0",
         "tsup": "^8.5.1",
+        "tsx": "^4.21.0",
         "typescript": "^6.0.2"
     }
 }
