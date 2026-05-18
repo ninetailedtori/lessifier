@@ -1,73 +1,75 @@
-/*
- * lessify
- * Copyright (C) 2026–present ninetailedtori
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * any later version.
- */
+// SPDX-FileCopyrightText: 2026-Present ninetailedtori <ninetailedtori@uwu.gal>
+// Copyright (C) 2026–present ninetailedtori
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 const COLOURS = {
-    debug: '\x1b[36m',
-    log: '\x1b[32m',
-    success: '\x1b[34m',
-    warn: '\x1b[33m',
-    error: '\x1b[31m',
+    debug: "\x1b[36m",
+    log: "\x1b[32m",
+    success: "\x1b[34m",
+    warn: "\x1b[33m",
+    error: "\x1b[31m"
 } as const;
 
-const RESET = '\x1b[0m';
+const RESET = "\x1b[0m";
 const PAD_WIDTH = 20;
 
 const PADDED_LEVELS = {
-    debug: 'DEBUG  ',
-    log: 'LOG    ',
-    success: 'SUCCESS',
-    warn: 'WARN   ',
-    error: 'ERROR  ',
+    debug: "DEBUG  ",
+    log: "LOG    ",
+    success: "SUCCESS",
+    warn: "WARN   ",
+    error: "ERROR  "
 } as const;
 
-enum LogLevel {
-    DEBUG = 0,
-    LOG = 1,
-    WARN = 2,
-    ERROR = 3,
+const LOG_LEVELS = {
+    debug: 0,
+    log: 1,
+    warn: 2,
+    error: 3
+} as const;
+
+type LogLevel = (typeof LOG_LEVELS)[keyof typeof LOG_LEVELS];
+
+function parseLogLevel(envValue: string | undefined): LogLevel {
+    if (!envValue) return LOG_LEVELS.log;
+    const level = LOG_LEVELS[envValue.toLowerCase() as keyof typeof LOG_LEVELS];
+    return level !== undefined ? level : LOG_LEVELS.log;
 }
 
-const currentLogLevel =
-    (parseInt(process.env.LOG_LEVEL ?? '1') as LogLevel) ?? LogLevel.LOG;
+const currentLogLevel = parseLogLevel(process.env.LOG_LEVEL);
 
 const CALLER_CACHE = new Map<string, string>();
 const CACHE_MAX_SIZE = 256;
 
 function getCaller(stackLine: string): string {
-    const atIdx = stackLine.indexOf('at ');
-    if (atIdx === -1) return 'anonymous';
+    const atIdx = stackLine.indexOf("at ");
+    if (atIdx === -1) return "anonymous";
 
     let start = atIdx + 3;
-    let end = stackLine.indexOf('(', start);
+    let end = stackLine.indexOf("(", start);
 
     if (end === -1) end = stackLine.length;
 
     while (start < end && stackLine.charCodeAt(start) === 32) start++;
     while (end > start && stackLine.charCodeAt(end - 1) === 32) end--;
 
-    if (start >= end) return 'anonymous';
+    if (start >= end) return "anonymous";
 
     const caller = stackLine.slice(start, end);
-    const dot = caller.lastIndexOf('.');
+    const dot = caller.lastIndexOf(".");
     return dot === -1 ? caller : caller.slice(dot + 1);
 }
 
 function getCallerNameCached(): string {
     const stack = new Error().stack;
-    if (!stack) return 'anonymous';
+    if (!stack) return "anonymous";
 
-    const lines = stack.split('\n');
-    if (lines.length < 5) return 'anonymous';
+    const lines = stack.split("\n");
+    if (lines.length < 5) return "anonymous";
 
     const stackLine = lines[4];
-    if (!stackLine) return 'anonymous';
+    if (!stackLine) return "anonymous";
 
     let caller = CALLER_CACHE.get(stackLine);
     if (caller !== undefined) return caller;
@@ -88,7 +90,7 @@ function getCallerNameCached(): string {
 }
 
 const PAD_CACHE = new Map<string, string>();
-const SPACE_64 = ' '.repeat(64);
+const SPACE_64 = " ".repeat(64);
 
 function padRightCached(str: string, width: number): string {
     if (width !== PAD_WIDTH) {
@@ -111,40 +113,40 @@ interface LogConfig {
     level: LogLevel;
     levelName: keyof typeof PADDED_LEVELS;
     colour: string;
-    stream: 'log' | 'warn' | 'error';
+    stream: "log" | "warn" | "error";
 }
 
 const LOG_CONFIGS = {
     debug: {
-        level: LogLevel.DEBUG,
-        levelName: 'debug',
+        level: LOG_LEVELS.debug,
+        levelName: "debug",
         colour: COLOURS.debug,
-        stream: 'error',
+        stream: "error"
     },
     log: {
-        level: LogLevel.LOG,
-        levelName: 'log',
+        level: LOG_LEVELS.log,
+        levelName: "log",
         colour: COLOURS.log,
-        stream: 'log',
+        stream: "log"
     },
     success: {
-        level: LogLevel.LOG,
-        levelName: 'success',
+        level: LOG_LEVELS.log,
+        levelName: "success",
         colour: COLOURS.success,
-        stream: 'log',
+        stream: "log"
     },
     warn: {
-        level: LogLevel.WARN,
-        levelName: 'warn',
+        level: LOG_LEVELS.warn,
+        levelName: "warn",
         colour: COLOURS.warn,
-        stream: 'warn',
+        stream: "warn"
     },
     error: {
-        level: LogLevel.ERROR,
-        levelName: 'error',
+        level: LOG_LEVELS.error,
+        levelName: "error",
         colour: COLOURS.error,
-        stream: 'error',
-    },
+        stream: "error"
+    }
 } as const;
 
 function formatLogMessage(msg: string, config: LogConfig): string {
@@ -172,9 +174,9 @@ function doLog(
 }
 
 export const logger = {
-    debug: (msg: string, ...args: unknown[]) => doLog('debug', msg, args),
-    log: (msg: string, ...args: unknown[]) => doLog('log', msg, args),
-    success: (msg: string, ...args: unknown[]) => doLog('success', msg, args),
-    warn: (msg: string, ...args: unknown[]) => doLog('warn', msg, args),
-    error: (msg: string, ...args: unknown[]) => doLog('error', msg, args),
+    debug: (msg: string, ...args: unknown[]) => doLog("debug", msg, args),
+    log: (msg: string, ...args: unknown[]) => doLog("log", msg, args),
+    success: (msg: string, ...args: unknown[]) => doLog("success", msg, args),
+    warn: (msg: string, ...args: unknown[]) => doLog("warn", msg, args),
+    error: (msg: string, ...args: unknown[]) => doLog("error", msg, args)
 };

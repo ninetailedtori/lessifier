@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 80,
+  "useTabs": false,
+  "semi": true,
+  "singleQuote": false,
+  "trailingComma": "none",
+  "sortImports": true,
+  "sortPackageJson": true,
+  "ignorePatterns": [
+    "renderer/auto-imports.d.ts",
+    "renderer/components.d.ts",
+    "renderer/typed-router.d.ts",
+    ".eslintrc-auto-import.json",
+    "pnpm-lock.yaml"
+  ]
+}

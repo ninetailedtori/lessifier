@@ -1,51 +1,75 @@
 {
-    "name": "lessifier",
-    "version": "1.0.0",
-    "description": "Converts your flat pure CSS into nested LESS syntax. Say goodbye to the days of manually refactoring messy scraped CSS!",
-    "keywords": [],
-    "author": "ninetailedtori",
-    "license": "GPL-3.0-or-later",
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
-    "exports": {
-        ".": {
-            "types": "./dist/index.d.ts",
-            "default": "./dist/index.js"
-        }
-    },
-    "files": [
-        "dist"
-    ],
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ninetailedtori/lessifier"
-    },
-    "homepage": "https://github.com/ninetailedtori/lessifier",
-    "bugs": {
-        "url": "https://github.com/ninetailedtori/lessifier/issues"
-    },
-    "type": "module",
-    "scripts": {
-        "prepare": "pnpm run format && pnpm run build",
-        "build": "tsup",
-        "build:watch": "tsup --watch",
-        "demo": "node demo/index.js",
-        "demo:debug": "LOG_LEVEL=0 node demo/index.js",
-        "format": "prettier --write .",
-        "format:check": "prettier --check .",
-        "format:staged": "prettier --write --staged"
-    },
-    "packageManager": "pnpm@10.33.0",
-    "engines": {
-        "pnpm": ">9.0.0"
-    },
-    "dependencies": {
-        "postcss": "^8.5.10"
-    },
-    "devDependencies": {
-        "@types/node": "^25.6.0",
-        "tsup": "^8.5.1",
-        "tsx": "^4.21.0",
-        "typescript": "^6.0.2"
+  "name": "lessifier",
+  "version": "1.1.0",
+  "description": "Converts your flat pure CSS into nested preprocessor-supported syntax.\nSay goodbye to the days of manually refactoring messy scraped CSS!",
+  "keywords": [],
+  "homepage": "https://github.com/ninetailedtori/lessifier",
+  "bugs": {
+    "url": "https://github.com/ninetailedtori/lessifier/issues"
+  },
+  "license": "GPL-3.0-or-later",
+  "author": "ninetailedtori",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ninetailedtori/lessifier"
+  },
+  "bin": {
+    "lessifier": "dist/lessifier.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
+  },
+  "scripts": {
+    "prepare": "pnpm run ci && pnpm run demo",
+    "ci": "pnpm run lint && pnpm run fmt && pnpm run build",
+    "build": "tsup",
+    "build:watch": "tsup --watch",
+    "test": "tsx --test src/**/*.test.ts",
+    "test:watch": "tsx --test --watch src/**/*.test.ts",
+    "demo": "pnpm run demo:log",
+    "demo:debug": "LOG_LEVEL=0 demo/index.js",
+    "demo:log": "LOG_LEVEL=1 demo/index.js",
+    "demo:warn": "LOG_LEVEL=2 demo/index.js",
+    "demo:error": "LOG_LEVEL=3 demo/index.js",
+    "lint": "run-s lint:*",
+    "lint:oxlint": "oxlint . --fix",
+    "lint:eslint": "eslint . --fix --cache",
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check ."
+  },
+  "dependencies": {
+    "commander": "^14.0.3",
+    "postcss": "^8.5.10",
+    "postcss-less": "^6.0.0",
+    "postcss-nested": "^7.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/postcss-less": "^4.0.7",
+    "@typescript-eslint/eslint-plugin": "^8.59.4",
+    "@typescript-eslint/parser": "^8.59.4",
+    "eslint": "^10.4.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-oxlint": "^1.65.0",
+    "jiti": "^2.7.0",
+    "npm-run-all": "^4.1.5",
+    "oxfmt": "^0.50.0",
+    "oxlint": "^1.65.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  },
+  "engines": {
+    "pnpm": ">9.0.0"
+  },
+  "packageManager": "pnpm@10.33.0"
 }

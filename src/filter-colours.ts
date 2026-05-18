@@ -1,60 +1,53 @@
-/*
- * lessify
- * Copyright (C) 2026–present ninetailedtori
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * any later version.
- */
+// SPDX-FileCopyrightText: 2026-Present ninetailedtori <ninetailedtori@uwu.gal>
+// Copyright (C) 2026–present ninetailedtori
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-import { readFileSync, writeFileSync } from 'fs';
-import { resolve } from 'path';
-import postcss from 'postcss';
-import { readStdin } from './reader.js';
-import { logger } from './logger.js';
+import postcss from "postcss";
+
+import { logger } from "./logger.js";
 
 const COLOUR_PROP_NAMES = [
-    'color',
-    'background-color',
-    'border-color',
-    'border-top-color',
-    'border-right-color',
-    'border-bottom-color',
-    'border-left-color',
-    'border-inline-start-color',
-    'border-inline-end-color',
-    'border-block-start-color',
-    'border-block-end-color',
-    'outline-color',
-    'box-shadow',
-    'text-shadow',
-    'fill',
-    'stroke',
-    'caret-color',
-    'accent-color',
-    'column-rule-color',
-    'text-decoration-color',
-    'text-emphasis-color',
-    'stop-color',
-    'flood-color',
-    'lighting-color',
+    "color",
+    "background-color",
+    "border-color",
+    "border-top-color",
+    "border-right-color",
+    "border-bottom-color",
+    "border-left-color",
+    "border-inline-start-color",
+    "border-inline-end-color",
+    "border-block-start-color",
+    "border-block-end-color",
+    "outline-color",
+    "box-shadow",
+    "text-shadow",
+    "fill",
+    "stroke",
+    "caret-color",
+    "accent-color",
+    "column-rule-color",
+    "text-decoration-color",
+    "text-emphasis-color",
+    "stop-color",
+    "flood-color",
+    "lighting-color"
 ] as const;
 
-const COLOUR_PROPS_CACHED = new Set(COLOUR_PROP_NAMES);
+const COLOUR_PROPS_CACHED: Set<string> = new Set(COLOUR_PROP_NAMES);
 
 const GENERIC_KW = [
-    'none',
-    'inherit',
-    'unset',
-    'initial',
-    'revert',
-    'revert-layer',
+    "none",
+    "inherit",
+    "unset",
+    "initial",
+    "revert",
+    "revert-layer"
 ] as const;
-const GENERIC_KW_CACHED = new Set(GENERIC_KW);
+const GENERIC_KW_CACHED: Set<string> = new Set(GENERIC_KW);
 
 /**
- * extracts a single colour value from a css property.
+ * @brief extracts a single colour value from a css property.
  * handles hex, rgb(a)/hsl(a)/hwb/lab/lch/oklab/oklch, color() function
  * syntax, and the common, named colours (red, blue, transparent, etc.)
  *
@@ -63,10 +56,10 @@ const GENERIC_KW_CACHED = new Set(GENERIC_KW);
  * colour found
  *
  * @example
- * extractColour('#ff0000')          // → '#ff0000'
- * extractColour('rgb(255,0,0)')    // → 'rgb(255,0,0)'
- * extractColour('red')             // → 'red'
- * extractColour('none')            // → null
+ * extractColour('#ff0000')          // ==> '#ff0000'
+ * extractColour('rgb(255,0,0)')    // ==> 'rgb(255,0,0)'
+ * extractColour('red')             // ==> 'red'
+ * extractColour('none')            // ==> null
  */
 export function extractColour(val: string): string | null {
     const len = val.length;
@@ -94,22 +87,22 @@ export function extractColour(val: string): string | null {
         return null;
     }
 
-    const parenIdx = val.indexOf('(');
+    const parenIdx = val.indexOf("(");
     if (parenIdx > 0 && parenIdx < 12) {
         const funcName = val.slice(0, parenIdx).toLowerCase();
         if (
-            funcName === 'rgb' ||
-            funcName === 'rgba' ||
-            funcName === 'hsl' ||
-            funcName === 'hsla' ||
-            funcName === 'hwb' ||
-            funcName === 'lab' ||
-            funcName === 'lch' ||
-            funcName === 'oklab' ||
-            funcName === 'oklch' ||
-            funcName === 'color'
+            funcName === "rgb" ||
+            funcName === "rgba" ||
+            funcName === "hsl" ||
+            funcName === "hsla" ||
+            funcName === "hwb" ||
+            funcName === "lab" ||
+            funcName === "lch" ||
+            funcName === "oklab" ||
+            funcName === "oklch" ||
+            funcName === "color"
         ) {
-            const closeIdx = val.indexOf(')', parenIdx);
+            const closeIdx = val.indexOf(")", parenIdx);
             if (closeIdx > parenIdx) {
                 return val.slice(0, closeIdx + 1);
             }
@@ -117,27 +110,27 @@ export function extractColour(val: string): string | null {
         return null;
     }
 
-    const spaceIdx = val.indexOf(' ');
+    const spaceIdx = val.indexOf(" ");
     const checkLen = spaceIdx > 0 ? spaceIdx : len;
     const word = val.slice(0, checkLen).toLowerCase();
 
     const namedColours = [
-        'red',
-        'orange',
-        'yellow',
-        'green',
-        'blue',
-        'indigo',
-        'violet',
-        'purple',
-        'pink',
-        'brown',
-        'gray',
-        'grey',
-        'black',
-        'white',
-        'transparent',
-        'currentcolor',
+        "red",
+        "orange",
+        "yellow",
+        "green",
+        "blue",
+        "indigo",
+        "violet",
+        "purple",
+        "pink",
+        "brown",
+        "gray",
+        "grey",
+        "black",
+        "white",
+        "transparent",
+        "currentcolor"
     ];
 
     if (namedColours.includes(word)) {
@@ -165,8 +158,15 @@ interface Decl {
     value: string;
 }
 
+interface FilterStats {
+    rulesProcessed: number;
+    rulesKept: number;
+    coloursExtracted: number;
+    declsRemoved: number;
+}
+
 /**
- * processes a single declaration, determining whether to keep it and if it
+ * @brief processes a single declaration, determining whether to keep it and if it
  * needs modification.
  * removes generic keywords (inherit, unset, etc.), extracts colours from
  * shorthand properties, and filters non-colour properties.
@@ -182,17 +182,12 @@ interface Decl {
  */
 function filterDecls(
     decl: Decl,
-    stats: {
-        rulesProcessed?: number;
-        rulesKept?: number;
-        coloursExtracted: any;
-        declsRemoved: any;
-    }
+    stats: FilterStats
 ): { keep: boolean; modified: boolean } {
     const propLower = getPropLower(decl.prop);
     const valueLower = decl.value.toLowerCase();
 
-    if (GENERIC_KW_CACHED.has(valueLower as any)) {
+    if (GENERIC_KW_CACHED.has(valueLower)) {
         stats.declsRemoved++;
         return { keep: false, modified: false };
     }
@@ -204,7 +199,7 @@ function filterDecls(
         const colour = extractColour(decl.value);
         if (colour) {
             stats.coloursExtracted++;
-            decl.prop = propLower + '-colour';
+            decl.prop = propLower + "-colour";
             decl.value = colour;
             return { keep: true, modified: true };
         }
@@ -212,7 +207,7 @@ function filterDecls(
         return { keep: false, modified: false };
     }
 
-    if (COLOUR_PROPS_CACHED.has(propLower as any)) {
+    if (COLOUR_PROPS_CACHED.has(propLower)) {
         stats.coloursExtracted++;
         return { keep: true, modified: false };
     }
@@ -222,7 +217,7 @@ function filterDecls(
 }
 
 /**
- * filters a css string to keep only colour-related declarations.
+ * @brief filters a css string to keep only colour-related declarations.
  * strips all at-rules, removes non-colour properties, extracts colour values
  * from shorthands. logs stats about what was processed.
  *
@@ -241,7 +236,7 @@ export async function filterColours(css: string): Promise<string> {
         rulesProcessed: 0,
         rulesKept: 0,
         coloursExtracted: 0,
-        declsRemoved: 0,
+        declsRemoved: 0
     };
 
     root.walkAtRules((atRule) => {
@@ -258,11 +253,7 @@ export async function filterColours(css: string): Promise<string> {
         let hasAnyColour = false;
 
         rule.walkDecls((decl) => {
-            const { keep, modified } = filterDecls(decl as Decl, stats);
-            if (modified && keep) {
-                decl.prop = decl.prop as any;
-                decl.value = decl.value as any;
-            }
+            const { keep } = filterDecls(decl as Decl, stats);
             if (keep) {
                 hasAnyColour = true;
             } else {
@@ -285,49 +276,3 @@ export async function filterColours(css: string): Promise<string> {
 
     return root.toString();
 }
-
-/**
- * cli entry point. invoked by bin scripts.
- * reads css from file or stdin, filters it, writes to file or stdout.
- *
- * usage:
- *   filter-colours input.css output.css
- *   cat file.css | filter-colours
- *
- * @returns {Promise<void>}
- * @throws exits with code 1 on error
- */
-async function main(): Promise<void> {
-    try {
-        let css_buffer: string;
-        let out_path: string | null = null;
-        if (process.argv[2]) {
-            const in_path = process.argv[2];
-            out_path = process.argv[3] || 'filtered.css';
-            css_buffer = readFileSync(resolve(in_path), 'utf-8');
-        } else {
-            if (process.stdin.isTTY) {
-                logger.error('Usage: filter-colours [input.css] [output.css]');
-                logger.error('       cat file.css | filter-colours');
-                process.exit(1);
-            }
-            css_buffer = await readStdin();
-        }
-
-        css_buffer = await filterColours(css_buffer);
-
-        if (out_path) {
-            writeFileSync(out_path, css_buffer, 'utf-8');
-            logger.success(`output: ${out_path}`);
-        } else {
-            process.stdout.write(css_buffer);
-        }
-    } catch (error) {
-        logger.error(
-            `Error: ${error instanceof Error ? error.message : 'unknown'}`
-        );
-        process.exit(1);
-    }
-}
-
-export default main;

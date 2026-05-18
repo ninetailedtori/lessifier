@@ -1,152 +1,294 @@
-/*
- * lessify
- * Copyright (C) 2026–present ninetailedtori
+// SPDX-FileCopyrightText: 2026-Present ninetailedtori <ninetailedtori@uwu.gal>
+// Copyright (C) 2026–present ninetailedtori
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import postcss, { Root } from "postcss";
+
+import { Indent } from "./indent.js";
+import { logger } from "./logger.js";
+import { extractLeadingDocString } from "./reader.js";
+
+/**
+ * @brief conditionally loads and parses CSS or LESS syntax
+ * dynamically imports postcss-less only when needed to minimize bundle impact.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * any later version.
+ * @param {string} css - Raw CSS or LESS string
+ * @param {'postcss' | 'postcss-less' | 'postcss-nested'} parserName - Which parser to use
+ * @returns {Promise<Root>} Parsed PostCSS AST
+ * @throws {Error} if parsing fails
  */
-
-import { readFileSync, writeFileSync } from 'fs';
-import { resolve } from 'path';
-import postcss from 'postcss';
-import { readStdin } from './reader.js';
-import { logger } from './logger.js';
-
-interface RuleGroup {
-    declarations: postcss.Declaration[];
+async function postcssParser(
+    css: string,
+    parserName: "postcss" | "postcss-less" | "postcss-nested"
+): Promise<Root> {
+    if (parserName === "postcss-less") {
+        const { default: lessParser } = await import("postcss-less");
+        return postcss.parse(css, { syntax: lessParser } as any);
+    }
+    if (parserName === "postcss-nested") {
+        const { default: nestedParser } = await import("postcss-nested");
+        return postcss.parse(css, { syntax: nestedParser } as any);
+    }
+    return postcss.parse(css);
 }
 
 /**
- * collates duplicate selectors and merges their declarations. takes a css
- * string with potentially repeated selectors, deduplicates them, and
- * combines their property declarations into single rules.
+ * @brief collapses duplicate selectors by merging declarations.
+ * handles both flat CSS and nested CSS/LESS structures.
  *
- * @param {string} css - raw css string to parse and collate
- * @returns {Promise<string>} compacted css with merged selectors
+ * For flat CSS:
+ *   .foo { color: red; } .foo { padding: 10px; }
+ *   ==> .foo { color: red; padding: 10px; }
  *
- * @example
- * const input  = '.foo { color: red; } .foo { padding: 10px; }';
- * const output = await collateSelectors(input);
- * // output: '.foo { color: red; padding: 10px; }'
+ * For nested CSS/LESS:
+ *   h1 { small { color: gray; } }
+ *   h2 { small { color: gray; } }
+ *   ==> h1, h2 { small { color: gray; } }
+ *
+ * @param {string} css - CSS or nested CSS/LESS string
+ * @param {object} options - { preprocessor?: 'css' | 'less', nested?: boolean, indent?: Indent }
+ * @returns {Promise<string>} collated output
  */
-export async function collateSelectors(css: string): Promise<string> {
-    logger.debug(`parsing ${css.length} bytes of CSS`);
-    const root = postcss.parse(css);
-    const groups = new Map<string, RuleGroup>();
+export async function collateSelectors(
+    css: string,
+    options?: {
+        preprocessor?: "css" | "less";
+        nested?: boolean;
+        indent?: Indent;
+    }
+): Promise<string> {
+    const preprocessor = options?.preprocessor ?? "css";
+    const indentStr = options?.indent ? options.indent.toString() : "  ";
+
+    let parserName: "postcss" | "postcss-less" | "postcss-nested";
+    if (preprocessor === "less") {
+        parserName = "postcss-less";
+    } else if (options?.nested === true) {
+        parserName = "postcss-nested";
+    } else {
+        parserName = "postcss";
+    }
+
+    const root = await postcssParser(css, parserName);
+    const hasNesting =
+        options?.nested !== undefined ? options.nested : isNested(root);
+
+    if (hasNesting) {
+        return collateNestedSelectors(root, indentStr);
+    } else {
+        return collateFlatSelectors(root, indentStr);
+    }
+}
+
+/**
+ * @brief detects whether the CSS/LESS AST contains nested rules.
+ * scans the root for any rule nodes that contain child rules (early exit on first match).
+ *
+ * @param {Root} root - PostCSS parsed AST
+ * @returns {boolean} true if nesting detected
+ */
+function isNested(root: Root): boolean {
+    let foundNesting = false;
+    root.walkRules((rule) => {
+        for (let i = 0; i < rule.nodes.length; i++) {
+            if (rule.nodes[i].type === "rule") {
+                foundNesting = true;
+                return false;
+            }
+        }
+    });
+    return foundNesting;
+}
+
+/**
+ * @brief collapses flat CSS selectors by merging duplicate rules.
+ * groups rules by selector, deduplicates declarations (later wins on conflicts),
+ * and emits compacted output without whitespace.
+ *
+ * @param {Root} root - PostCSS parsed AST (non-nested)
+ * @param {string} indentStr - Indentation string (e.g., '  ' or '\t')
+ * @returns {Promise<string>} minified CSS with collapsed selectors
+ */
+async function collateFlatSelectors(
+    root: Root,
+    indentStr: string
+): Promise<string> {
+    const groups = new Map<
+        string,
+        {
+            selectors: string[];
+            declarations: postcss.Declaration[];
+        }
+    >();
     let rulesProcessed = 0;
 
     root.walkRules((rule) => {
         rulesProcessed++;
         const nodes = rule.nodes;
-
         if (!nodes || nodes.length === 0) return;
 
         const decls: postcss.Declaration[] = [];
         for (let i = 0; i < nodes.length; i++) {
             const node = nodes[i];
-            if (node.type === 'decl') decls.push(node as postcss.Declaration);
+            if (node.type === "decl") decls.push(node as postcss.Declaration);
         }
 
         if (decls.length === 0) return;
 
-        rule.selectors.forEach((selector) => {
-            const existing = groups.get(selector);
+        const declKey = decls
+            .map((d) => `${d.prop}:${d.value}`)
+            .sort()
+            .join("|");
 
-            if (!existing) {
-                groups.set(selector, { declarations: decls });
-                logger.debug(`  → new "${selector}"`);
-            } else {
-                const propMap = new Map<string, postcss.Declaration>();
-
-                for (let i = 0; i < existing.declarations.length; i++) {
-                    const d = existing.declarations[i];
-                    propMap.set(d.prop, d);
-                }
-
-                for (let i = 0; i < decls.length; i++) {
-                    const d = decls[i];
-                    propMap.set(d.prop, d);
-                }
-
-                const merged: postcss.Declaration[] = [];
-                propMap.forEach((v) => merged.push(v));
-                existing.declarations = merged;
-
-                logger.debug(`  → merged "${selector}"`);
-            }
-        });
+        const existing = groups.get(declKey);
+        if (!existing) {
+            groups.set(declKey, {
+                selectors: [...rule.selectors],
+                declarations: decls
+            });
+            logger.debug(
+                `  ==> new group with ${rule.selectors.length} selectors`
+            );
+        } else {
+            // Merge selectors, avoiding duplicates
+            const selectorSet = new Set([
+                ...existing.selectors,
+                ...rule.selectors
+            ]);
+            existing.selectors = Array.from(selectorSet);
+            logger.debug(
+                `  ==> merged, now ${existing.selectors.length} selectors`
+            );
+        }
     });
 
     logger.log(
-        `processed ${rulesProcessed} rules → ${groups.size} unique selectors`
+        `processed ${rulesProcessed} rules ==> ${groups.size} unique declaration groups`
     );
 
     const output: string[] = [];
-    groups.forEach((group, selector) => {
-        output.push(`${selector}{`);
 
+    groups.forEach((group) => {
+        output.push(`${group.selectors.join(", ")} {\n`);
         for (let i = 0; i < group.declarations.length; i++) {
             const d = group.declarations[i];
-            output.push(`${d.prop}:${d.value};`);
+            output.push(`${indentStr}${d.prop}: ${d.value};\n`);
         }
-
-        output.push('}');
+        output.push("}\n");
     });
 
-    const result = output.join('');
-    logger.debug(`generated ${result.length} bytes`);
-    return result;
+    return extractLeadingDocString(root) + output.join("");
 }
 
 /**
- * cli entry point. invoked by bin scripts.
- * reads css from a file or stdin, collates selectors, writes to file or stdout.
+ * @brief collapses nested CSS/LESS rules by grouping selectors with identical subtrees.
+ * computes a hash of each rule's nested structure and children, then merges
+ * selectors that share the same hash into a comma-separated list.
  *
- * usage:
- *   collate-selectors input.css output.css
- *   cat file.css | collate-selectors
+ * Example:
+ *   h1 { .btn { color: blue; } }
+ *   h2 { .btn { color: blue; } }
+ *   ==> h1, h2 { .btn { color: blue; } }
  *
- * @returns {Promise<void>}
- * @throws exits with code 1 on error
+ * @param {Root} root - PostCSS parsed AST (may contain nested rules)
+ * @param {string} indentStr - Indentation string (e.g., '  ' or '\t')
+ * @returns {string} output with merged nested selectors and proper indentation
  */
-async function main(): Promise<void> {
-    try {
-        let css: string;
-        let outPath: string | null;
+function collateNestedSelectors(root: Root, indentStr: string): string {
+    /**
+     * helper that recursively stringifies PostCSS nodes with proper indentation!
+     */
+    function stringifyWithIndent(
+        nodes: postcss.Node[],
+        currentIndent: string = ""
+    ): string {
+        const output: string[] = [];
 
-        if (process.argv[2]) {
-            const inPath = process.argv[2];
-            outPath = process.argv[3] || 'collated.css';
-            logger.log(`reading ${inPath}`);
-            css = readFileSync(resolve(inPath), 'utf-8');
-        } else {
-            if (process.stdin.isTTY) {
-                logger.error(
-                    'Usage: collate-selectors [input.css] [output.css]'
+        nodes.forEach((node) => {
+            if (node.type === "rule") {
+                const rule = node as postcss.Rule;
+                output.push(`${currentIndent}${rule.selector} {\n`);
+
+                const nested = stringifyWithIndent(
+                    rule.nodes || [],
+                    currentIndent + indentStr
                 );
-                logger.error('   or: cat file.css | collate-selectors');
-                process.exit(1);
+                output.push(nested);
+
+                output.push(`${currentIndent}}\n`);
+            } else if (node.type === "decl") {
+                const decl = node as postcss.Declaration;
+                output.push(`${currentIndent}${decl.prop}: ${decl.value};\n`);
             }
-            logger.log('reading stdin...');
-            css = await readStdin();
-            outPath = null;
-        }
+        });
 
-        css = await collateSelectors(css);
-
-        if (outPath) {
-            writeFileSync(outPath, css, 'utf-8');
-            logger.success(`written to ${outPath}`);
-        } else {
-            process.stdout.write(css);
-        }
-    } catch (error) {
-        const msg = error instanceof Error ? error.message : 'unknown';
-        logger.error(`Error: ${msg}`);
-        process.exit(1);
+        return output.join("");
     }
+
+    const grouped = new Map<
+        string,
+        {
+            hash: string;
+            selectors: Set<string>;
+            rule: postcss.Rule;
+        }
+    >();
+
+    root.each((node) => {
+        if (node.type !== "rule") return;
+        const rule = node as postcss.Rule;
+        const hash = calcSubtreeHash(rule);
+
+        if (!grouped.has(hash)) {
+            grouped.set(hash, {
+                hash,
+                selectors: new Set([rule.selector]),
+                rule: rule.clone()
+            });
+        } else {
+            grouped.get(hash)!.selectors.add(rule.selector);
+        }
+    });
+
+    const output: string[] = [];
+    grouped.forEach(({ selectors, rule }) => {
+        const merged = new postcss.Rule({
+            selector: Array.from(selectors).join(", ")
+        });
+        rule.each((node) => {
+            merged.append(node.clone());
+        });
+        output.push(stringifyWithIndent([merged]));
+    });
+
+    return extractLeadingDocString(root) + output.join("");
 }
 
-export default main;
+/**
+ * @brief computes a content hash of a rule's subtree (declarations and nested rules).
+ * used to identify rules with identical structure for grouping/collation.
+ *
+ * hash format: `D:prop:value|R:selector|prop:value|...`
+ * - `D:` prefix for declarations
+ * - `R:` prefix for nested rules
+ *
+ * @param {postcss.Rule} rule - The rule to hash
+ * @returns {string} opaque hash representing the rule's content
+ */
+function calcSubtreeHash(rule: postcss.Rule): string {
+    const parts: string[] = [];
+    rule.each((node) => {
+        if (node.type === "decl") {
+            const d = node as postcss.Declaration;
+            parts.push(`D:${d.prop}:${d.value}`);
+        } else if (node.type === "rule") {
+            const child = node as postcss.Rule;
+            parts.push(`R:${child.selector}`);
+            child.walkDecls((d) => {
+                parts.push(`${d.prop}:${d.value}`);
+            });
+        }
+    });
+    return parts.join("|");
+}

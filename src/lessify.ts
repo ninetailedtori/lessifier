@@ -1,18 +1,13 @@
-/*
- * lessify
- * Copyright (C) 2026–present ninetailedtori
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * any later version.
- */
+// SPDX-FileCopyrightText: 2026-Present ninetailedtori <ninetailedtori@uwu.gal>
+// Copyright (C) 2026–present ninetailedtori
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-import { readFileSync, writeFileSync } from 'fs';
-import { resolve } from 'path';
-import postcss from 'postcss';
-import { readStdin } from './reader.js';
-import { logger } from './logger.js';
+import postcss from "postcss";
+
+import { Indent } from "./indent.js";
+import { logger } from "./logger.js";
+import { extractLeadingDocString } from "./reader.js";
 
 const CC_PAREN_OPEN = 40;
 const CC_PAREN_CLOSE = 41;
@@ -80,7 +75,7 @@ function isBalanced(sel: string): boolean {
 const INLINE_IS_PSEUDO = (code: number) => code === CC_COLON || code === CC_DOT;
 
 /**
- * computes a hash key of declarations for grouping similar selectors.
+ * @brief computes a hash key of declarations for grouping similar selectors.
  * used to merge selectors with identical declaration sets during rendering.
  *
  * @param {Array} decls - array of { prop, value } declarations
@@ -92,7 +87,7 @@ function computeDeclKey(
         value: string;
     }[]
 ): string {
-    if (decls.length === 0) return '';
+    if (decls.length === 0) return "";
 
     const len = decls.length;
     let size = 0;
@@ -112,10 +107,10 @@ function computeDeclKey(
     });
 
     for (let i = 0; i < sorted.length; i++) {
-        parts.push(sorted[i].prop, ':', sorted[i].value, '|');
+        parts.push(sorted[i].prop, ":", sorted[i].value, "|");
     }
 
-    return parts.join('');
+    return parts.join("");
 }
 
 interface Token {
@@ -126,7 +121,7 @@ interface Token {
 const TOKEN_BUFFER: Token[] = [];
 
 /**
- * tokenizes a selector string into combinator-separated parts.
+ * @brief tokenizes a selector string into combinator-separated parts.
  * splits on descendant (space), child (>), adjacent (+), and sibling (~)
  * combinators, while respecting parentheses (for :not(), :is(), etc.).
  *
@@ -145,8 +140,8 @@ function tokenizeSelector(sel: string): Token[] {
 
     const len = sel.length;
     let paren = 0;
-    let token = '';
-    let lastComb = ' ';
+    let token = "";
+    let lastComb = " ";
 
     for (let i = 0; i < len; i++) {
         const code = sel.charCodeAt(i);
@@ -167,7 +162,7 @@ function tokenizeSelector(sel: string): Token[] {
         ) {
             if (token) {
                 TOKEN_BUFFER.push({ token, combinator: lastComb });
-                token = '';
+                token = "";
             }
 
             if (code !== CC_SPACE) lastComb = String.fromCharCode(code);
@@ -185,7 +180,7 @@ function tokenizeSelector(sel: string): Token[] {
 }
 
 /**
- * builds a selector tree from a flat list of rules.
+ * @brief builds a selector tree from a flat list of rules.
  * groups selectors hierarchically by their combinator-separated parts,
  * allowing later deduplication and nested rendering.
  *
@@ -199,12 +194,12 @@ function buildSelectorTree(
     }>
 ): SelectorNode {
     const root: SelectorNode = {
-        selector: 'root',
-        combinator: '',
+        selector: "root",
+        combinator: "",
         is_pseudo: false,
-        declKey: '',
+        declKey: "",
         children: new Map(),
-        declarations: [],
+        declarations: []
     };
 
     for (let ruleIdx = 0; ruleIdx < rules.length; ruleIdx++) {
@@ -228,9 +223,9 @@ function buildSelectorTree(
                     selector: tok.token,
                     combinator: tok.combinator,
                     is_pseudo: INLINE_IS_PSEUDO(selectorCode),
-                    declKey: '',
+                    declKey: "",
                     children: new Map(),
-                    declarations: [],
+                    declarations: []
                 };
                 node.children.set(key, child);
             }
@@ -254,29 +249,37 @@ function computeAllDeclKeys(node: SelectorNode): void {
     }
 }
 
+/**
+ *
+ */
 class RenderBuffer {
     private parts: string[] = [];
     private depth = 0;
+    private indentStr: string;
+
+    constructor(indent: Indent) {
+        this.indentStr = indent.toString();
+    }
 
     push(s: string): void {
         this.parts.push(s);
     }
 
     indent(n: number = 1): void {
-        this.parts.push('    '.repeat(this.depth + n));
+        this.parts.push(this.indentStr.repeat(this.depth + n));
     }
 
     newline(): void {
-        this.parts.push('\n');
+        this.parts.push("\n");
     }
 
     toString(): string {
-        return this.parts.join('');
+        return this.parts.join("");
     }
 }
 
 /**
- * renders a selector tree back to less/css syntax.
+ * @brief renders a selector tree back to less/css syntax.
  * handles nested selectors, groups siblings with matching declarations,
  * and outputs properly formatted less with indentation.
  *
@@ -292,35 +295,35 @@ function render(
     depth: number = 0,
     nested: boolean = false
 ): void {
-    if (node.selector === 'root') {
+    if (node.selector === "root") {
         for (const child of node.children.values()) {
             render(child, buffer, depth, false);
         }
         return;
     }
 
-    const sel = nested && node.is_pseudo ? '&' + node.selector : node.selector;
+    const sel = nested && node.is_pseudo ? "&" + node.selector : node.selector;
 
     if (!node.children.size && !node.declarations.length) {
         buffer.indent(depth);
         buffer.push(sel);
-        buffer.push(' {}');
+        buffer.push(" {}");
         buffer.newline();
         return;
     }
 
     buffer.indent(depth);
     buffer.push(sel);
-    buffer.push(' {\n');
+    buffer.push(" {\n");
 
     const decls = node.declarations;
     for (let i = 0; i < decls.length; i++) {
         const d = decls[i];
         buffer.indent(depth + 1);
         buffer.push(d.prop);
-        buffer.push(': ');
+        buffer.push(": ");
         buffer.push(d.value);
-        buffer.push(';\n');
+        buffer.push(";\n");
     }
 
     const grouped = new Map<string, SelectorNode[]>();
@@ -343,19 +346,19 @@ function render(
             const selList: string[] = [];
             for (let i = 0; i < siblings.length; i++) {
                 const sib = siblings[i];
-                selList.push(sib.is_pseudo ? '&' + sib.selector : sib.selector);
+                selList.push(sib.is_pseudo ? "&" + sib.selector : sib.selector);
             }
-            buffer.push(selList.join(', '));
-            buffer.push(' {\n');
+            buffer.push(selList.join(", "));
+            buffer.push(" {\n");
 
             const firstDecls = siblings[0].declarations;
             for (let i = 0; i < firstDecls.length; i++) {
                 const d = firstDecls[i];
                 buffer.indent(depth + 2);
                 buffer.push(d.prop);
-                buffer.push(': ');
+                buffer.push(": ");
                 buffer.push(d.value);
-                buffer.push(';\n');
+                buffer.push(";\n");
             }
 
             for (const child of siblings[0].children.values()) {
@@ -363,16 +366,16 @@ function render(
             }
 
             buffer.indent(depth + 1);
-            buffer.push('}\n');
+            buffer.push("}\n");
         }
     }
 
     buffer.indent(depth);
-    buffer.push('}\n');
+    buffer.push("}\n");
 }
 
 /**
- * processes a css string into nested less syntax.
+ * @brief processes a css string into nested less syntax.
  * parses css, builds a selector tree, deduplicates rules, and renders as less.
  * logs performance timing and rule counts.
  *
@@ -384,7 +387,12 @@ function render(
  * const output = await lessify(input);
  * // output: 'body { margin: 0; padding: 0; }'
  */
-export async function lessify(css: string): Promise<string> {
+export async function lessify(
+    css: string,
+    options: {
+        indent: Indent;
+    }
+): Promise<string> {
     const t0 = performance.now();
     const root = postcss.parse(css);
     const rules: Array<{
@@ -414,7 +422,8 @@ export async function lessify(css: string): Promise<string> {
     logger.log(`found ${rules.length} rules`);
 
     const tree = buildSelectorTree(rules);
-    const buffer = new RenderBuffer();
+    const buffer = new RenderBuffer(options.indent);
+    buffer.push(extractLeadingDocString(root));
     render(tree, buffer);
 
     const elapsed = (performance.now() - t0).toFixed(2);
@@ -422,48 +431,3 @@ export async function lessify(css: string): Promise<string> {
 
     return buffer.toString();
 }
-
-/**
- * cli entry point. invoked by bin scripts.
- * reads css from file or stdin, lessifies it, writes to file or stdout.
- *
- * usage:
- *   lessify input.css output.less
- *   cat file.css | lessify
- *
- * @returns {Promise<void>}
- * @throws exits with code 1 on error
- */
-async function main(): Promise<void> {
-    try {
-        let css: string;
-        let outPath: string | null = null;
-
-        if (process.argv[2]) {
-            const inPath = process.argv[2];
-            outPath = process.argv[3] || 'lessified.less';
-            css = readFileSync(resolve(inPath), 'utf-8');
-        } else {
-            if (process.stdin.isTTY) {
-                logger.error('Usage: lessify [input.css] [output.less]');
-                logger.error('       cat file.css | lessify');
-                process.exit(1);
-            }
-            css = await readStdin();
-        }
-
-        const output = await lessify(css);
-
-        if (outPath) {
-            writeFileSync(outPath, output, 'utf-8');
-            logger.success(`wrote ${output.length} chars to ${outPath}`);
-        } else {
-            process.stdout.write(output);
-        }
-    } catch (error) {
-        logger.error(error instanceof Error ? error.message : 'unknown error');
-        process.exit(1);
-    }
-}
-
-export default main;

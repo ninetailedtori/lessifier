@@ -1,20 +1,18 @@
-/*
- * lessify
- * Copyright (C) 2026–present ninetailedtori
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * any later version.
- */
+// SPDX-FileCopyrightText: 2026-Present ninetailedtori <ninetailedtori@uwu.gal>
+// Copyright (C) 2026–present ninetailedtori
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-import { defineConfig } from 'tsup';
+import { defineConfig } from "tsup";
 
 export default defineConfig({
-    entry: ['src/index.ts'],
-    format: ['esm'],
+    entry: {
+        index: "src/index.ts",
+        lessifier: "bin/lessifier.ts"
+    },
+    format: ["esm"],
     dts: true,
     sourcemap: true,
     clean: true,
-    outDir: 'dist',
+    outDir: "dist"
 });

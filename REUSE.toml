@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: 2026–Present ninetailedtori <ninetailedtori@uwu.gal>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+version = 1
+
+[[annotations]]
+path = ["*", "src/**", "demo/**"]
+SPDX-FileCopyrightText = "2026-Present ninetailedtori <ninetailedtori@uwu.gal>"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = ["LICENSE"]
+precedence = "override"
+SPDX-FileCopyrightText = "2007 Free Software Foundation, Inc."
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = ["dist/css/*.css"]
+SPDX-FileCopyrightText = "2017 Creative Tim (http://www.creative-tim.com)"
+SPDX-License-Identifier = "MIT"

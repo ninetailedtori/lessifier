@@ -1,7 +1,13 @@
+<!--
+SPDX-FileCopyrightText: 2026-Present ninetailedtori <ninetailedtori@uwu.gal>
+
+SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 # lessifier
 
-Converts your flat pure CSS into nested LESS syntax. Say goodbye to the days
-of manually refactoring messy scraped CSS!
+Converts your flat pure CSS into nested preprocessor-supported syntax. Say
+goodbye to the days of manually refactoring messy scraped CSS!
 
 ## what does it do?
 
@@ -72,8 +78,8 @@ npm install -D lessifier
 ## what it doesn't do
 
 - Preserve comments (yet)
-- Handle `@media`, `@keyframes`, etc.
-  (they'll confuse the lexer, so we remove them)
+- Handle `@media`, `@keyframes`, etc. (they'll confuse the lexer, so we remove
+  them)
 - Minify (only groups same-level selectors with the same rules together)
 - Generate source maps
 

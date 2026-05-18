@@ -1,32 +1,43 @@
-/*
- * lessify
- * Copyright (C) 2026–present ninetailedtori
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * any later version.
- */
+#!/usr/bin/env node
 
-import { collateSelectors, filterColours, lessify } from '../dist/index.js';
-import fs from 'fs';
+// SPDX-FileCopyrightText: 2026-Present ninetailedtori <ninetailedtori@uwu.gal>
+// Copyright (C) 2026–present ninetailedtori
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { readFile, writeFile } from "fs/promises";
+
+import {
+    collateSelectors,
+    filterColours,
+    Indent,
+    lessify
+} from "../dist/index.js";
 
 async function main() {
-    const input = await fs.readFileSync( 'demo/css/in.1.css', 'utf-8' );
+    const indent = new Indent("space", 2);
+    const input = await readFile("demo/css/in.1.css", "utf-8");
 
-    console.log( 'filtering colours...in.1.css => filtered.2.css' );
-    const filtered = await filterColours( input );
-    await fs.writeFileSync( 'demo/css/filtered.2.css', filtered );
+    console.log("1. filtering colours...");
+    const filtered = await filterColours(input);
+    await writeFile("demo/css/filtered.2.css", filtered);
 
-    console.log( 'collating selectors...filtered.2.css => collated.3.css' );
-    const collated = await collateSelectors( filtered );
-    await fs.writeFileSync( 'demo/css/collated.3.css', collated );
+    console.log("2. collating selectors...");
+    const collated = await collateSelectors(filtered, { indent });
+    await writeFile("demo/css/collated.3.css", collated);
 
-    console.log( 'lessifying...collated.3.css => lessified.4.less' );
-    const lessified = await lessify( collated );
-    await fs.writeFileSync( 'demo/css/lessified.4.less', lessified );
+    console.log("3. lessifying...");
+    const lessified = await lessify(collated, { indent });
+    await writeFile("demo/css/lessified.4.less", lessified);
 
-    console.log( 'lessification complete!' );
+    console.log("4. collating nested less...");
+    const output = await collateSelectors(lessified, {
+        preprocessor: "less",
+        indent
+    });
+    await writeFile("demo/css/out.5.less", output);
+
+    console.log(":3 lessification complete!");
 }
 
-main().catch( console.error );
+main().catch(console.error);
